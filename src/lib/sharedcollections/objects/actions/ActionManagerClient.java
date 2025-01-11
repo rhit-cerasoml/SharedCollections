@@ -1,0 +1,125 @@
+package lib.sharedcollections.objects.actions;
+
+import lib.sharedcollections.objects.net.connections.id.Destination;
+import lib.sharedcollections.objects.net.connections.Connection;
+import lib.sharedcollections.objects.net.connections.id.Source;
+
+import java.util.LinkedList;
+import java.util.ListIterator;
+
+public class ActionManagerClient extends ActionManager {
+
+    // Responsible for tracking emitted action requests which haven't been acknowledged yet
+    private final LinkedList<Action> acknowledgementBuffer = new LinkedList<>();
+
+    // Actions received are placed into here until an acknowledgement is received at which point the buffer is flushed
+    // all DR actions are reverted, these actions are applied, then all DR actions are re-applied
+    private final LinkedList<Action> preAcknowledgementFutureBuffer = new LinkedList<>();
+
+    private boolean validDeadReckonState = true;
+
+    public ActionManagerClient(Connection connection) {
+        super(connection);
+    }
+
+    @Override
+    public boolean sendActionRequest(Action action, int actionID) {
+        if(validDeadReckonState){
+            boolean result = action.apply();
+            if(result) {
+                acknowledgementBuffer.push(action);
+                try {
+                    emitAction(action, actionID, new Destination(Destination.Policy.ALL));
+                }catch (Exception e){
+                    e.printStackTrace();
+                    acknowledgementBuffer.pop();
+                    return false;
+                }
+            }
+            return result;
+        }else{
+            return false;
+        }
+    }
+
+    @Override
+    protected void processRollbackAcknowledgement(Source source) {
+        // Do nothing - not a valid client operation
+    }
+
+    @Override
+    public void processActionRequest(Action action, int actionID, Source source) {
+        if(!acknowledgementBuffer.isEmpty()) {
+            preAcknowledgementFutureBuffer.push(action);
+        }else{
+            action.apply();
+        }
+    }
+
+    @Override
+    public void processActionAcknowledgement(ActionAcknowledgement actionAcknowledgement, Source source) {
+        if(actionAcknowledgement.result) {
+            if(validDeadReckonState){
+                revertDeadReckon();
+            }
+            while (!preAcknowledgementFutureBuffer.isEmpty()) {
+                Action action = preAcknowledgementFutureBuffer.pollLast();
+                action.apply();
+            }
+            Action action = acknowledgementBuffer.pollLast();
+            action.apply();
+            if(acknowledgementBuffer.isEmpty()){
+                while (!preAcknowledgementFutureBuffer.isEmpty()) {
+                    Action recvAction = preAcknowledgementFutureBuffer.pollLast();
+                    recvAction.apply();
+                }
+            }
+            attemptApplyDeadReckon();
+        }else{
+            flushAcknowledgementBuffer();
+            while (!preAcknowledgementFutureBuffer.isEmpty()) {
+                Action action = preAcknowledgementFutureBuffer.pollLast();
+                action.apply();
+            }
+            try {
+                emitRollbackAcknowledgement(new Destination(Destination.Policy.ALL));
+            }catch (Exception e){
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        }
+    }
+
+    private void flushAcknowledgementBuffer(){
+        while(!acknowledgementBuffer.isEmpty()){
+            Action action = acknowledgementBuffer.pollLast();
+            if(validDeadReckonState) {
+                action.revert();
+            }
+        }
+        validDeadReckonState = true;
+    }
+
+    private void revertDeadReckon(){
+        validDeadReckonState = false;
+        for(Action actionToRevert : acknowledgementBuffer){
+            actionToRevert.revert();
+        }
+    }
+
+    private void attemptApplyDeadReckon(){
+        validDeadReckonState = true;
+        ListIterator<Action> iterator = acknowledgementBuffer.listIterator(acknowledgementBuffer.size());
+        while (iterator.hasPrevious()) {
+            Action action = iterator.previous();
+            if(!action.apply()){
+                validDeadReckonState = false;
+                for(Action actionToRevert : acknowledgementBuffer){
+                    if(action == actionToRevert) break;
+                    actionToRevert.revert();
+                }
+                break;
+            }
+        }
+    }
+}

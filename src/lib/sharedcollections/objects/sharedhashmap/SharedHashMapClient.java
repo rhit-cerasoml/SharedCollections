@@ -1,0 +1,38 @@
+package lib.sharedcollections.objects.sharedhashmap;
+
+import lib.sharedcollections.objects.actions.ActionManager;
+import lib.sharedcollections.util.serial.Synchronizer;
+
+public class SharedHashMapClient<K, V> extends SharedHashMap<K, V> {
+
+    public SharedHashMapClient(ActionManager actionManager, Synchronizer<K> keySynchronizer, Synchronizer<V> valueSynchronizer) {
+        super(actionManager, keySynchronizer, valueSynchronizer);
+        try {
+            actionManager.sendActionRequest(new SyncRequest(), syncRequestHandle);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void applySyncRequest(SyncRequest syncRequest) {
+        // Do nothing - this isn't a supported request on client
+    }
+
+    @Override
+    protected void applySyncData(SyncData syncData) {
+        try {
+            content.clear();
+            int len = syncData.incompleteStream.readInt();
+            for(int i = 0; i < len; i++){
+                content.put(
+                    keySynchronizer.deserializer.deserialize(syncData.incompleteStream),
+                    valueSynchronizer.deserializer.deserialize(syncData.incompleteStream)
+                );
+            }
+        }catch (Exception e){
+            content.clear();
+            e.printStackTrace();
+        }
+    }
+}
