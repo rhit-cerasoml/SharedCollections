@@ -25,7 +25,7 @@
   "keyToString": {
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "last_opened_file_path": "C:/Users/Max Cerasoli/Desktop/SharedCollections/src/lib/sharedcollections/objects/actions",
+    "last_opened_file_path": "C:/Users/Max Cerasoli/Desktop/SharedCollections/src/main/java/lib/sharedcollections/objects/net/host",
     "project.structure.last.edited": "Libraries",
     "project.structure.proportion": "0.15",
     "project.structure.side.proportion": "0.2",
@@ -34,6 +34,7 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\Max Cerasoli\Desktop\SharedCollections\src\main\java\lib\sharedcollections\objects\net\host" />
       <recent name="C:\Users\Max Cerasoli\Desktop\SharedCollections\src\lib\sharedcollections\objects\actions" />
       <recent name="C:\Users\Max Cerasoli\Desktop\SharedCollections\src\lib\sharedcollections\objects\sharedhashmap" />
       <recent name="C:\Users\Max Cerasoli\Desktop\SharedCollections\src\lib\sharedcollections\objects\net\connections" />
