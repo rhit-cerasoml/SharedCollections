@@ -25,6 +25,9 @@
                         <goals>
                             <goal>jar</goal>
                         </goals>
+                        <configuration>
+                            <classifier>lib</classifier>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
